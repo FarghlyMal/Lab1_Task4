@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDoS Detection Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.8;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 1.1em;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .interface-selector {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .interface-selector label {
+            font-size: 1.1em;
+        }
+
+        .interface-selector select {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-start {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-start:hover {
+            background: #45a049;
+        }
+
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-stop:hover {
+            background: #da190b;
+        }
+
+        .btn-clear {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #e68900;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .table-header h2 {
+            font-size: 1.8em;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .result-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85em;
+            display: inline-block;
+        }
+
+        .result-normal {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .result-malicious {
+            background: #f44336;
+            color: white;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            opacity: 0.6;
+        }
+
+        .timestamp {
+            font-family: 'Courier New', monospace;
+            opacity: 0.8;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            font-size: 1.2em;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ DDoS Detection & Mitigation Dashboard</h1>
+            <p>Real-time Network Traffic Analysis</p>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-label">Total Packets</div>
+                <div class="stat-value" id="totalPackets">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Malicious Flows</div>
+                <div class="stat-value" id="maliciousFlows">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Blocked IPs</div>
+                <div class="stat-value" id="blockedIPs">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="uptime">00:00</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="interface-selector">
+                <label for="interface">Network Interface:</label>
+                <select id="interface">
+                    <option value="eth0">eth0</option>
+                    <option value="wlan0">wlan0</option>
+                    <option value="lo">lo</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn btn-clear" onclick="clearData()">Clear Data</button>
+                <button class="btn btn-stop" onclick="location.reload()">Refresh</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h2>Detection Log</h2>
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>Live Monitoring</span>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="detectionTable">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Src IP</th>
+                            <th>Src Port</th>
+                            <th>Dst IP</th>
+                            <th>Dst Port</th>
+                            <th>Protocol</th>
+                            <th>Packets/s</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detectionBody">
+                        <tr>
+                            <td colspan="8" class="loading">
+                                <div class="spinner"></div>
+                                Waiting for detection data...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let startTime = new Date();
+
+        // Format timestamp
+        function formatTimestamp(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        // Update uptime
+        function updateUptime() {
+            const now = new Date();
+            const diff = Math.floor((now - startTime) / 1000);
+            const hours = Math.floor(diff / 3600).toString().padStart(2, '0');
+            const minutes = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+            const seconds = (diff % 60).toString().padStart(2, '0');
+            document.getElementById('uptime').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Fetch and update detections
+        async function updateDetections() {
+            try {
+                const response = await fetch('/api/detections');
+                const data = await response.json();
+
+                const tbody = document.getElementById('detectionBody');
+                
+                if (data.detections.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="no-data">No detections yet. Waiting for traffic analysis...</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                
+                // Show most recent first
+                const sortedDetections = data.detections.slice().reverse();
+                
+                sortedDetections.forEach(detection => {
+                    const row = tbody.insertRow();
+                    const pps = detection.features?.packets_per_second || 0;
+                    
+                    row.innerHTML = `
+                        <td class="timestamp">${formatTimestamp(detection.timestamp)}</td>
+                        <td>${detection.src_ip}</td>
+                        <td>${detection.src_port}</td>
+                        <td>${detection.dst_ip}</td>
+                        <td>${detection.dst_port}</td>
+                        <td>${getProtocolName(detection.protocol)}</td>
+                        <td>${pps.toFixed(2)}</td>
+                        <td><span class="result-badge result-malicious">Malicious</span></td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Error fetching detections:', error);
+            }
+        }
+
+        // Fetch and update stats
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+
+                document.getElementById('totalPackets').textContent = 
+                    stats.total_packets.toLocaleString();
+                document.getElementById('maliciousFlows').textContent = 
+                    stats.malicious_flows.toLocaleString();
+                document.getElementById('blockedIPs').textContent = 
+                    stats.blocked_ips.toLocaleString();
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+            }
+        }
+
+        // Get protocol name
+        function getProtocolName(protocolNum) {
+            const protocols = {
+                1: 'ICMP',
+                6: 'TCP',
+                17: 'UDP'
+            };
+            return protocols[protocolNum] || `Proto ${protocolNum}`;
+        }
+
+        // Clear all data
+        async function clearData() {
+            if (confirm('Are you sure you want to clear all detection data?')) {
+                try {
+                    await fetch('/api/clear');
+                    location.reload();
+                } catch (error) {
+                    console.error('Error clearing data:', error);
+                }
+            }
+        }
+
+        // Update data periodically
+        setInterval(updateDetections, 2000);  // Update every 2 seconds
+        setInterval(updateStats, 2000);
+        setInterval(updateUptime, 1000);
+
+        // Initial load
+        updateDetections();
+        updateStats();
+        updateUptime();
+    </script>
+</body>
+</html>

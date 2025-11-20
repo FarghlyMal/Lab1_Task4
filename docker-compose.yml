@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Nginx web server
+  nginx-server:
+    image: nginx:latest
+    container_name: nginx_ddos_lab
+    ports:
+      - "8080:80"
+    networks:
+      - lab_network
+    volumes:
+      - ./nginx-content:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    labels:
+      - "lab4.service=web"
+
+  # Apache web server
+  apache-server:
+    image: httpd:latest
+    container_name: apache_ddos_lab
+    ports:
+      - "8081:80"
+    networks:
+      - lab_network
+    volumes:
+      - ./apache-content:/usr/local/apache2/htdocs:ro
+    restart: unless-stopped
+    labels:
+      - "lab4.service=web"
+
+  # Test client container
+  test-client:
+    image: ubuntu:22.04
+    container_name: test_client_ddos_lab
+    networks:
+      - lab_network
+    command: >
+      bash -c "
+      apt-get update &&
+      apt-get install -y curl iputils-ping net-tools dnsutils &&
+      echo 'Test client ready. Container will stay running.' &&
+      echo 'Use: docker exec -it test_client_ddos_lab bash' &&
+      tail -f /dev/null
+      "
+    depends_on:
+      - nginx-server
+      - apache-server
+    labels:
+      - "lab4.service=client"
+
+  # DDoS Detection System (optional - for integrated testing)
+  ddos-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile.detector
+    container_name: ddos_detector_lab
+    networks:
+      - lab_network
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    volumes:
+      - ./logs:/app/logs
+      - /sys/kernel/debug:/sys/kernel/debug:ro
+    environment:
+      - INTERFACE=eth0
+    depends_on:
+      - nginx-server
+      - apache-server
+    labels:
+      - "lab4.service=detector"
+
+networks:
+  lab_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# To run this setup:
+# 1. docker-compose up -d
+# 2. docker ps (to see all containers)
+# 3. docker exec -it test_client_ddos_lab bash
+# 4. Inside the client: ping nginx-server
+# 5. Inside the client: curl http://nginx-server
+# 6. Inside the client: curl http://apache-server
