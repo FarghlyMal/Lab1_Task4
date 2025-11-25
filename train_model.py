@@ -176,7 +176,25 @@ class DDoSModelTrainer:
         
         # Check for label column
         if label_column not in df.columns:
-            raise ValueError(f"Label column '{label_column}' not found in dataset")
+            # Try common alternative label column names before failing
+            alternatives = [label_column,
+                            'label', 'Label', 'labelled', 'Labelled',
+                            'attack', 'Attack', 'class', 'Class',
+                            'flow_label', 'FlowLabel', 'Category', 'category']
+
+            found_label = None
+            for alt in alternatives:
+                if alt in df.columns:
+                    found_label = alt
+                    break
+
+            if found_label:
+                print(f"⚠ Warning: label column '{label_column}' not found. Using '{found_label}' instead.")
+                label_column = found_label
+            else:
+                print("   Available columns:")
+                print(list(df.columns))
+                raise ValueError(f"Label column '{label_column}' not found in dataset")
         
         # Get available features
         available_features = [col for col in FEATURE_COLUMNS if col in df.columns]
